@@ -1,0 +1,3 @@
+@echo off
+echo Starting AuthTwin Milestone 1 Development Workstation...
+python scripts/start_dev.py

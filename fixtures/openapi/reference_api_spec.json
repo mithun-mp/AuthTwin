@@ -1,0 +1,79 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Reference Target API",
+    "version": "1.0.0",
+    "description": "OpenAPI specification for AuthTwin reference target."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8090"
+    }
+  ],
+  "paths": {
+    "/login": {
+      "post": {
+        "summary": "Login User",
+        "operationId": "loginUser",
+        "responses": {
+          "200": {
+            "description": "Successful Login"
+          }
+        }
+      }
+    },
+    "/projects": {
+      "get": {
+        "summary": "List Projects",
+        "operationId": "listProjects",
+        "responses": {
+          "200": {
+            "description": "List of projects"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Project",
+        "operationId": "createProject",
+        "responses": {
+          "201": {
+            "description": "Project created"
+          }
+        }
+      }
+    },
+    "/projects/{project_id}": {
+      "get": {
+        "summary": "Get Project Details",
+        "operationId": "getProject",
+        "responses": {
+          "200": {
+            "description": "Project details"
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/documents": {
+      "post": {
+        "summary": "Create Document under Project",
+        "operationId": "createDocument",
+        "responses": {
+          "201": {
+            "description": "Document created"
+          }
+        }
+      }
+    },
+    "/documents/{document_id}": {
+      "get": {
+        "summary": "Get Document Details",
+        "operationId": "getDocument",
+        "responses": {
+          "200": {
+            "description": "Document details"
+          }
+        }
+      }
+    }
+  }
+}
