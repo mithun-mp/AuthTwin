@@ -145,22 +145,44 @@ def get_active_target_url(db: DBSession) -> str:
 
 
 def validate_transaction_target(transaction_url: str, active_target_url: str) -> str:
-    """Require captured transaction URLs to stay on the validated target origin."""
+    """Normalize and validate captured transaction URLs to ensure they resolve to target origin."""
     if not transaction_url or not transaction_url.strip():
         raise HTTPException(status_code=400, detail="Captured transaction URL cannot be empty.")
 
-    parsed_transaction = urlparse(transaction_url.strip())
-    if not parsed_transaction.scheme or not parsed_transaction.netloc:
-        raise HTTPException(status_code=400, detail="Captured transaction URL must be absolute.")
+    clean_tx = transaction_url.strip()
+    active_target = active_target_url.strip().rstrip("/")
+    parsed_target = urlparse(active_target)
+    target_netloc = parsed_target.netloc.lower()
 
-    transaction_origin = f"{parsed_transaction.scheme}://{parsed_transaction.netloc}".lower()
-    target_origin = f"{urlparse(active_target_url).scheme}://{urlparse(active_target_url).netloc}".lower()
-    if transaction_origin != target_origin:
+    def normalize_host(netloc: str) -> str:
+        return netloc.replace("localhost", "127.0.0.1")
+
+    norm_target_netloc = normalize_host(target_netloc)
+
+    # Check for proxy prefix
+    has_proxy_prefix = PROXY_PREFIX in clean_tx
+    if has_proxy_prefix:
+        idx = clean_tx.find(PROXY_PREFIX)
+        clean_tx = clean_tx[idx + len(PROXY_PREFIX):]
+        if not clean_tx.startswith("/"):
+            clean_tx = f"/{clean_tx}"
+
+    parsed_tx = urlparse(clean_tx)
+
+    # Convert relative path to absolute target URL
+    if not parsed_tx.scheme or not parsed_tx.netloc:
+        path = clean_tx if clean_tx.startswith("/") else f"/{clean_tx}"
+        return f"{active_target}{path}"
+
+    tx_netloc = normalize_host(parsed_tx.netloc.lower())
+
+    if not has_proxy_prefix and tx_netloc != norm_target_netloc:
         raise HTTPException(
             status_code=400,
             detail="Captured transaction URL does not match the validated project target.",
         )
-    return transaction_url.strip()
+
+    return clean_tx
 
 
 class TargetVerifyRequest(BaseModel):

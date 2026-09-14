@@ -10,11 +10,12 @@ from app.database import Base, get_db
 from app.models import Target, Identity, Session as SessionModel, Transaction, Workflow, ShadowWorkflow
 from app.api import interceptor as interceptor_api
 
-# Setup isolated file-based SQLite database for E2E flow testing
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_e2e_flow.db"
+# Setup isolated in-memory SQLite database for E2E flow testing
+SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -30,20 +31,12 @@ client = TestClient(app)
 
 import app.models
 
-import os
-
 @pytest.fixture(autouse=True)
 def setup_db():
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-    engine.dispose()
+    Target.__table__.metadata.drop_all(bind=engine)
+    Target.__table__.metadata.create_all(bind=engine)
     yield
-    engine.dispose()
-    if os.path.exists("test_e2e_flow.db"):
-        try:
-            os.remove("test_e2e_flow.db")
-        except Exception:
-            pass
+    Target.__table__.metadata.drop_all(bind=engine)
 
 
 class FakeTargetServerResponse:

@@ -1,13 +1,13 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session as DBSession
-from app.database import get_db
-from app.models import Workflow, WorkflowNode, WorkflowEdge, Dependency, Transaction
-from app.schemas import (
-    WorkflowResponse, WorkflowGraphResponse, WorkflowNodeResponse,
-    WorkflowEdgeResponse, DependencyResponse, ShadowWorkflowCreate, ShadowWorkflowResponse
+from app.core.database import get_db
+from app.models.models import Workflow, WorkflowNode, WorkflowEdge, ShadowWorkflow
+from app.schemas.schemas import (
+    WorkflowResponse, WorkflowGraphResponse, ShadowWorkflowCreate, ShadowWorkflowResponse
 )
-from app.shadow.cloner import clone_shadow_workflow
+from app.services.shadow_service import clone_shadow_workflow
+from app.services.workflow_service import get_workflow_graph_details
 
 router = APIRouter(prefix="/workflows", tags=["Workflows"])
 
@@ -24,22 +24,10 @@ def get_workflow(workflow_id: str, db: DBSession = Depends(get_db)):
 
 @router.get("/{workflow_id}/graph", response_model=WorkflowGraphResponse)
 def get_workflow_graph(workflow_id: str, db: DBSession = Depends(get_db)):
-    wf = db.query(Workflow).filter(Workflow.id == workflow_id).first()
-    if not wf:
-        raise HTTPException(status_code=404, detail="Workflow not found")
-
-    nodes = db.query(WorkflowNode).filter(WorkflowNode.workflow_id == workflow_id).order_by(WorkflowNode.sequence_index.asc()).all()
-    edges = db.query(WorkflowEdge).filter(WorkflowEdge.workflow_id == workflow_id).all()
-
-    tx_ids = [n.transaction_id for n in nodes]
-    dependencies = db.query(Dependency).filter(Dependency.producer_transaction_id.in_(tx_ids)).all()
-
-    return WorkflowGraphResponse(
-        workflow=wf,
-        nodes=nodes,
-        edges=edges,
-        dependencies=dependencies
-    )
+    try:
+        return get_workflow_graph_details(db, workflow_id)
+    except ValueError as err:
+        raise HTTPException(status_code=404, detail=str(err))
 
 @router.post("/{workflow_id}/clone", response_model=ShadowWorkflowResponse)
 def clone_workflow(
@@ -57,10 +45,8 @@ def clone_workflow(
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err))
 
-
 @router.delete("/{workflow_id}")
 def delete_workflow(workflow_id: str, db: DBSession = Depends(get_db)):
-    from app.models import ShadowWorkflow
     wf = db.query(Workflow).filter(Workflow.id == workflow_id).first()
     if not wf:
         raise HTTPException(status_code=404, detail="Workflow not found")
@@ -72,7 +58,6 @@ def delete_workflow(workflow_id: str, db: DBSession = Depends(get_db)):
     db.commit()
     return {"message": f"Workflow {workflow_id} deleted successfully."}
 
-
 @router.delete("")
 def delete_all_workflows(db: DBSession = Depends(get_db)):
     wfs = db.query(Workflow).all()
@@ -80,4 +65,3 @@ def delete_all_workflows(db: DBSession = Depends(get_db)):
     for wf in wfs:
         delete_workflow(wf.id, db)
     return {"message": f"Deleted {count} workflows."}
-

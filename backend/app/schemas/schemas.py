@@ -22,7 +22,7 @@ class TargetResponse(TargetBase):
 # Identity
 class IdentityBase(BaseModel):
     name: str
-    role: str = "Primary" # Primary or Alternate
+    role: str = "Primary"  # Primary or Alternate
     auth_type: str = "Bearer"
 
 class IdentityCreate(IdentityBase):
@@ -110,7 +110,101 @@ class DependencyResponse(BaseModel):
         from_attributes = True
 
 
-# Workflow & Graph
+# Linear Workflow Representation (Replay / Shadow Authority)
+class LinearStepSchema(BaseModel):
+    step_index: int
+    occurrence_id: str
+    transaction_id: str
+    method: str
+    path: str
+    url: str
+    operation_id: Optional[str] = None
+    resource_type: Optional[str] = None
+    resource_identifier: Optional[str] = None
+    req_body: Optional[str] = None
+    res_status: int
+    res_body: Optional[str] = None
+    dependencies: List[Dict[str, Any]] = []
+    replay_eligible: bool = True
+
+class LinearWorkflowResponse(BaseModel):
+    workflow_id: str
+    session_id: str
+    identity_id: str
+    name: str
+    created_at: datetime.datetime
+    steps: List[LinearStepSchema] = []
+
+
+# Canonical Hybrid Graph Representation (Visualization / Topology Authority)
+class CanonicalOccurrenceSummary(BaseModel):
+    occurrence_index: int
+    transaction_id: str
+    timestamp: datetime.datetime
+    res_status: int
+
+class CanonicalNodeSchema(BaseModel):
+    id: str
+    logical_node_id: str
+    occurrence_id: Optional[str] = None
+    linear_step_id: Optional[str] = None
+    transaction_id: Optional[str] = None
+    method: str
+    path_template: str
+    actual_path: str
+    operation_id: Optional[str] = None
+    resource_type: Optional[str] = None
+    resource_identifier: Optional[str] = None
+    in_degree: int = 0
+    out_degree: int = 0
+    occurrences: List[CanonicalOccurrenceSummary] = []
+
+class DependencyBindingSchema(BaseModel):
+    producer_location: str = "response.body"
+    producer_path: str
+    consumer_location: str
+    consumer_parameter: str
+    extracted_value: str
+
+class EdgeEvidenceSchema(BaseModel):
+    reason: str
+    confidence: float = 1.0
+    step_distance: int = 1
+
+class CanonicalEdgeSchema(BaseModel):
+    id: str
+    source: str
+    target: str
+    edge_type: str  # Primary type: SEQUENCE, DEPENDENCY_TRANSITION, BRANCH, MERGE, RESOURCE_LINEAGE
+    relation_type: str = "SEQUENCE"
+    cardinality: str = "1->1"  # 1->1, 1->N, N->1, N->N
+    types: List[str] = []
+    source_occurrences: List[str] = []
+    target_occurrences: List[str] = []
+    bindings: List[DependencyBindingSchema] = []
+    evidence: Optional[EdgeEvidenceSchema] = None
+    dependency_id: Optional[str] = None
+    dependency_details: Optional[Dict[str, Any]] = None
+    confidence: Optional[float] = 1.0
+    step_distance: Optional[int] = 1
+
+class GraphMetadataSchema(BaseModel):
+    node_count: int = 0
+    edge_count: int = 0
+    dependency_edge_count: int = 0
+    sequence_edge_count: int = 0
+    branch_count: int = 0
+    merge_count: int = 0
+    max_in_degree: int = 0
+    max_out_degree: int = 0
+
+class CanonicalGraphSchema(BaseModel):
+    nodes: List[CanonicalNodeSchema] = []
+    edges: List[CanonicalEdgeSchema] = []
+    metadata: Optional[GraphMetadataSchema] = None
+
+
+# Legacy & Extended Workflow Node / Edge Responses
 class WorkflowNodeResponse(BaseModel):
     id: str
     workflow_id: str
@@ -151,9 +245,13 @@ class WorkflowResponse(BaseModel):
 
 class WorkflowGraphResponse(BaseModel):
     workflow: WorkflowResponse
+    linear_workflow: LinearWorkflowResponse
     nodes: List[WorkflowNodeResponse]
     edges: List[WorkflowEdgeResponse]
-    dependencies: List[DependencyResponse]
+    canonical_nodes: List[CanonicalNodeSchema] = []
+    canonical_edges: List[CanonicalEdgeSchema] = []
+    canonical_graph: Optional[CanonicalGraphSchema] = None
+    dependencies: List[DependencyResponse] = []
 
 
 # Shadow Workflow

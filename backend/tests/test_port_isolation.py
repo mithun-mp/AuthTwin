@@ -2,21 +2,21 @@ import pytest
 from app.config import Settings
 from app.api.interceptor import validate_target_scope
 
-def test_infrastructure_api_port_below_5000_fails():
-    with pytest.raises(ValueError, match="must be between 5000 and 5999"):
-        Settings(AUTHTWIN_API_PORT=4999)
+def test_infrastructure_api_port_below_1024_fails():
+    with pytest.raises(ValueError, match="must be a valid port between 1024 and 65535"):
+        Settings(AUTHTWIN_API_PORT=80)
 
-def test_infrastructure_api_port_above_5999_fails():
-    with pytest.raises(ValueError, match="must be between 5000 and 5999"):
-        Settings(AUTHTWIN_API_PORT=6000)
+def test_infrastructure_api_port_above_65535_fails():
+    with pytest.raises(ValueError, match="must be a valid port between 1024 and 65535"):
+        Settings(AUTHTWIN_API_PORT=70000)
 
-def test_infrastructure_frontend_port_below_5000_fails():
-    with pytest.raises(ValueError, match="must be between 5000 and 5999"):
-        Settings(AUTHTWIN_FRONTEND_PORT=4999)
+def test_infrastructure_frontend_port_below_1024_fails():
+    with pytest.raises(ValueError, match="must be a valid port between 1024 and 65535"):
+        Settings(AUTHTWIN_FRONTEND_PORT=80)
 
-def test_infrastructure_frontend_port_above_5999_fails():
-    with pytest.raises(ValueError, match="must be between 5000 and 5999"):
-        Settings(AUTHTWIN_FRONTEND_PORT=6000)
+def test_infrastructure_frontend_port_above_65535_fails():
+    with pytest.raises(ValueError, match="must be a valid port between 1024 and 65535"):
+        Settings(AUTHTWIN_FRONTEND_PORT=70000)
 
 def test_infrastructure_port_collision_fails():
     with pytest.raises(ValueError, match="cannot be the same"):
